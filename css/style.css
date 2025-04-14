@@ -32,7 +32,6 @@ body {
     border: 1px solid #30363d;
     color: #e6edf3;
     border-radius: 6px;
-    transition: all 0.2s ease;
 }
 
 .form-control:focus {
