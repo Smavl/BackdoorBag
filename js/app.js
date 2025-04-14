@@ -102,7 +102,6 @@ const wordlistPaths = [
     // subdomains
     "/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt",
     "/usr/share/seclists/Discovery/DNS/bitquark-subdomains-top100000.txt",
-    // 
 ];
 
 // Input variables configuration 
@@ -276,10 +275,29 @@ function formatCategoryToId(category) {
 
 // Create a tab button
 function createTabButton(tabId, category, isActive) {
+    // Define icons for different categories
+    const iconMap = {
+        "Web Discovery": "fa-search",
+        "VHOST Discovery": "fa-server",
+        "Parameter fuzzing": "fa-code",
+        "JSON fuzzing": "fa-brackets-curly",
+        "Authentication": "fa-lock",
+        "Default": "fa-terminal"
+    };
+    
+    const icon = iconMap[category] || iconMap["Default"];
+    
     return `
         <li class="nav-item" role="presentation">
-            <button class="nav-link ${isActive ? "active" : ""}" id="${tabId}-tab" data-bs-toggle="pill" data-bs-target="#${tabId}" type="button" role="tab" aria-controls="${tabId}" aria-selected="${isActive}">
-                ${category}
+            <button class="nav-link ${isActive ? "active" : ""}" 
+                id="${tabId}-tab" 
+                data-bs-toggle="pill" 
+                data-bs-target="#${tabId}" 
+                type="button" 
+                role="tab" 
+                aria-controls="${tabId}" 
+                aria-selected="${isActive}">
+                <i class="fas ${icon} me-2"></i>${category}
             </button>
         </li>
     `;
@@ -312,17 +330,24 @@ function updateCommands() {
         const updatedCommands = categoryCommands.map(command => {
             const wordlist = values.wordlist || command.default_wordlist;
             const replacedCommand = replacePlaceholders(command.command, { ...values, wordlist });
+            
+            // Create tags with the new styling
+            const tagElements = command.tags.map(tag => 
+                `<span class="tag">${tag}</span>`
+            ).join("");
 
             return `
-                <div class="card bg-dark text-light mb-3">
+                <div class="card mb-3">
                     <div class="card-body">
-                        <h5 class="card-title">Command: ${command.description}</h5>
-                        <p class="card-text"><b>Tool:</b> ${command.tool}</p>
-                        <p class="card-text"><b>Tags:</b> ${command.tags.join(", ")}</p>
+                        <h5 class="card-title">${command.description}</h5>
+                        <span class="tool-badge">${command.tool}</span>
+                        <div class="mb-3">
+                            ${tagElements}
+                        </div>
                         <div class="d-flex justify-content-between align-items-center">
-                            <pre class="card-text mb-0 text-white command-text">${replacedCommand}</pre>
+                            <pre class="command-text flex-grow-1">${replacedCommand}</pre>
                             <button class="btn btn-secondary btn-sm copy-btn ms-3" data-command="${replacedCommand}">
-                                Copy
+                                <i class="fas fa-copy me-1"></i>Copy
                             </button>
                         </div>
                     </div>
@@ -331,12 +356,9 @@ function updateCommands() {
         });
 
         const tabId = formatCategoryToId(category);
-
-        // Update the commands in the corresponding tab
         $(`#${tabId}-commands`).html(updatedCommands.join(""));
     });
 
-    // Add event listeners for clipboard buttons
     setupClipboardButtons();
 }
 
@@ -392,8 +414,14 @@ function setupClipboardButtons() {
         const button = $(this);
         navigator.clipboard.writeText(button.data("command"))
             .then(() => {
+                const originalText = button.html();
                 button.removeClass("btn-secondary").addClass("btn-success");
-                setTimeout(() => button.removeClass("btn-success").addClass("btn-secondary"), 1000);
+                button.html('<i class="fas fa-check me-1"></i>Copied!');
+                
+                setTimeout(() => {
+                    button.removeClass("btn-success").addClass("btn-secondary");
+                    button.html(originalText);
+                }, 1000);
             })
             .catch(err => console.error("Failed to copy command:", err));
     });
