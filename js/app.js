@@ -4,7 +4,7 @@ const commands = [
     { // fuff dir discovery
         id: "fuff_dir_discovery",
         description: "Directory discovery using ffuf",
-        command: "ffuf -w {{wordlist}} -u https://{{target_ip}}/FUZZ",
+        command: "ffuf -w {{wordlist}} -u http://{{target_ip}}/FUZZ",
         tool: "ffuf",
         category: "Web Discovery",
         tags: ["brute force", "web"],
@@ -14,7 +14,7 @@ const commands = [
     {
         id: "gobuster_dir_discovery",
         description: "Directory discovery using gobuster",
-        command: "gobuster dir -u https://{{target_ip}} -w {{wordlist}}",
+        command: "gobuster dir -u http://{{target_ip}} -w {{wordlist}}",
         tool: "gobuster",
         category: "Web Discovery",
         tags: ["brute force", "web"],
@@ -23,7 +23,7 @@ const commands = [
     {
         id: "vhost_discovery",
         description: "Virtual host discovery (without DNS records)",
-        command: "ffuf -w {{wordlist}} -u https://{{target_ip}} -H \"Host: FUZZ\" -fs 4242",
+        command: "ffuf -w {{wordlist}} -u http://{{target_ip}} -H \"Host: FUZZ\" -fs 4242",
         tool: "ffuf",
         category: "VHOST Discovery",
         tags: ["vhost discovery", "dns"],
@@ -33,7 +33,7 @@ const commands = [
     {
         id: "get_param_fuzz",
         description: "GET param fuzzing, filtering for invalid response size",
-        command: "ffuf -w {{wordlist}} -u https://{{target_ip}}/script.php?FUZZ=test_value -fs 4242",
+        command: "ffuf -w {{wordlist}} -u http://{{target_ip}}/script.php?FUZZ=test_value -fs 4242",
         tool: "ffuf",
         category: "Parameter fuzzing",
         tags: ["get param", "response filtering"],
@@ -42,7 +42,7 @@ const commands = [
     {
         id: "get_param_values",
         description: "GET parameter fuzzing if the param is known (fuzzing values) and filtering 401",
-        command: "ffuf -w {{wordlist}} -u https://{{target_ip}}/script.php?valid_name=FUZZ -fc 401",
+        command: "ffuf -w {{wordlist}} -u http://{{target_ip}}/script.php?valid_name=FUZZ -fc 401",
         tool: "ffuf",
         category: "Parameter fuzzing",
         tags: ["get param", "filter 401"],
@@ -50,17 +50,17 @@ const commands = [
     },
     {
         id: "post_param_fuzz",
-        description: "POST parameter fuzzing",
-        command: "ffuf -w {{wordlist}} -X POST -d \"username=admin\\&password=FUZZ\" -u https://{{target_ip}}/login.php -fc 401",
+        description: "POST parameter fuzzing with filtering for status code 401",
+        command: "ffuf -w {{wordlist}} -X POST -d \"username=admin\\&password=FUZZ\" -u http://{{target_ip}}/login.php -fc 401",
         tool: "ffuf",
-        category: "Parameter fuzzing",
+        category: ["Authentication", "Parameter fuzzing"],
         tags: ["post param", "filter 401"],
         default_wordlist: "/usr/share/seclists/Discovery/Web-Content/post-data.txt"
     },
     {
         id: "post_json_fuzz",
         description: "Fuzz POST JSON data. Match all responses not containing text 'error'.",
-        command: `ffuf -w {{wordlist}} -u https://{{target_ip}}/ -X POST -H "Content-Type: application/json" -d '{"name": "FUZZ", "anotherkey": "anothervalue"}' -fr "error"`,
+        command: `ffuf -w {{wordlist}} -u http://{{target_ip}}/ -X POST -H "Content-Type: application/json" -d '{"name": "FUZZ", "anotherkey": "anothervalue"}' -fr "error"`,
         tool: "ffuf",
         category: "JSON fuzzing",
         tags: ["post","json", "response filtering"],
@@ -77,12 +77,32 @@ const commands = [
         tags: ["brute force", "http basic auth"],
         default_wordlist: "/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
     },
+    /// *** SSH AUTHENTICATION COMMANDS ***
+    {
+        id: "hydra_ssh_auth",
+        description: "Brute force SSH authentication using Hydra",
+        command: "hydra -l {{target_user}} -P {{wordlist}} {{target_ip}} ssh",
+        tool: "hydra",
+        category: "Authentication",
+        tags: ["brute force", "ssh"],
+        default_wordlist: "/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+    },
 ];
 
 // Wordlist paths
 const wordlistPaths = [
+    // web content
     "/usr/share/seclists/Discovery/Web-Content/raft-large-directories.txt",
     "/usr/share/seclists/Discovery/Web-Content/raft-large-files.txt",
+    // Passwords
+    "/usr/share/wordlists/rockyou.txt",
+    // Usernames
+    "/usr/share/seclists/Usernames/xato-net-10-million-usernames.txt",
+    "/usr/share/seclists/Usernames/Names/names.txt",
+    // subdomains
+    "/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt",
+    "/usr/share/seclists/Discovery/DNS/bitquark-subdomains-top100000.txt",
+    // 
 ];
 
 // Input variables configuration 
@@ -95,7 +115,8 @@ const inputvariables = [
     { id: "target_domain", label: "Target Domain", default: "example.com" },
     { id: "target_user", label: "Target User", default: "admin" },
     { id: "target_pass", label: "Target Password", default: "password" },
-    { id: "wordlist", label: "Wordlist Path", default: wordlistPaths[0] } 
+    // { id: "wordlist", label: "Wordlist Path", default: wordlistPaths[0] } 
+    { id: "wordlist", label: "Wordlist Path", default: null } 
 ];
 
 // Save the active tab to localStorage
@@ -124,7 +145,8 @@ $(document).ready(function () {
     loadInputValuesFromLocalStorage(); // Load saved input values
     generateInputFields();
     generateTabsAndContent();
-    applyDefaultValuesOnLoad();
+    applyDefaultValues();
+    applyLocalValues();
     setupInputChangeListener();
     setupTabChangeListener(); // Set up tab persistence
     loadActiveTab(); // Load the last active tab
@@ -147,6 +169,13 @@ $(document).ready(function () {
         updateCommands(); // Update commands dynamically
         saveInputValuesToLocalStorage(); // Save the updated wordlist to localStorage
     });
+
+    // Add event listener for the reset button
+    $("#resetButton").on("click", function () {
+        resetInputValuesToDefault();
+    });
+
+    setupHoverExpand(); // Set up hover expand functionality
 });
 
 // Load input values from localStorage
@@ -154,7 +183,7 @@ function loadInputValuesFromLocalStorage() {
     inputvariables.forEach(variable => {
         const savedValue = localStorage.getItem(variable.id);
         if (savedValue !== null) {
-            variable.default = savedValue; // Update the default value with the saved value
+            $(`#${variable.id}`).val(savedValue); // Set the value in the input field
         }
     });
 }
@@ -174,6 +203,13 @@ function generateInputFields() {
         const field = createInputField(variable.id, variable.label, variable.default);
         inputSection.append(field);
     });
+
+    // Add the reset button
+    inputSection.append(`
+        <div class="mb-3">
+            <button id="resetButton" class="btn btn-danger btn-sm">Reset to Default</button>
+        </div>
+    `);
 }
 
 // Create a single input field
@@ -185,18 +221,16 @@ function createInputField(id, label, defaultValue) {
         `).join("");
 
         return `
-            <div class="mb-3 col-auto">
+            <div class="mb-3 col-auto align-items-left">
                 <label for="${id}" class="form-label">${label}</label>
-                <div class="btn-group w-100">
-                    <input type="text" class="form-control" id="${id}" placeholder="Enter wordlist path" value="${defaultValue}">
-                    <button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                <div class="input-group hover-expand">
+                    <button type="button" class="btn btn-secondary btn-sm dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
                         <span class="visually-hidden">Toggle Dropdown</span>
                     </button>
                     <ul class="dropdown-menu">
                         ${dropdownItems}
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" data-value="custom">Custom</a></li>
                     </ul>
+                    <input type="text" class="form-control " id="${id}" placeholder="Enter wordlist path" value="${defaultValue}">
                 </div>
             </div>
         `;
@@ -231,7 +265,8 @@ function generateTabsAndContent() {
 
 // Get unique categories from the commands array
 function getUniqueCategories() {
-    return [...new Set(commands.map(command => command.category))];
+    const allCategories = commands.flatMap(command => command.category);
+    return [...new Set(allCategories)];
 }
 
 // Format a category into a valid ID
@@ -252,8 +287,10 @@ function createTabButton(tabId, category, isActive) {
 
 // Create tab content
 function createTabContent(tabId, category, isActive) {
-    const commandsForCategory = commands.filter(command => command.category === category);
-    const commandList = commandsForCategory.map(command => `<li class="list-group-item bg-dark text-light">${command.command}</li>`).join("");
+    const commandsForCategory = commands.filter(command => command.category.includes(category));
+    const commandList = commandsForCategory.map(command => `
+        <li class="list-group-item bg-dark text-light">${command.command}</li>
+    `).join("");
 
     return `
         <div class="tab-pane fade ${isActive ? "show active" : ""}" id="${tabId}" role="tabpanel" aria-labelledby="${tabId}-tab">
@@ -271,23 +308,36 @@ function updateCommands() {
     const uniqueCategories = getUniqueCategories();
 
     uniqueCategories.forEach(category => {
-        const categoryCommands = commands.filter(command => command.category === category);
+        const categoryCommands = commands.filter(command => command.category.includes(category));
         const updatedCommands = categoryCommands.map(command => {
-            const wordlist = values.wordlist || command.default_wordlist; // Use custom or default wordlist
-            return replacePlaceholders(command.command, { ...values, wordlist });
-        });
-        const tabId = formatCategoryToId(category);
+            const wordlist = values.wordlist || command.default_wordlist;
+            const replacedCommand = replacePlaceholders(command.command, { ...values, wordlist });
 
-        $(`#${tabId}-commands`).html(
-            updatedCommands.map(cmd => `
+            return `
                 <div class="card bg-dark text-light mb-3">
                     <div class="card-body">
-                        <pre class="card-text mb-0 text-white">${cmd}</pre>
+                        <h5 class="card-title">Command: ${command.description}</h5>
+                        <p class="card-text"><b>Tool:</b> ${command.tool}</p>
+                        <p class="card-text"><b>Tags:</b> ${command.tags.join(", ")}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <pre class="card-text mb-0 text-white command-text">${replacedCommand}</pre>
+                            <button class="btn btn-secondary btn-sm copy-btn ms-3" data-command="${replacedCommand}">
+                                Copy
+                            </button>
+                        </div>
                     </div>
                 </div>
-            `).join("")
-        );
+            `;
+        });
+
+        const tabId = formatCategoryToId(category);
+
+        // Update the commands in the corresponding tab
+        $(`#${tabId}-commands`).html(updatedCommands.join(""));
     });
+
+    // Add event listeners for clipboard buttons
+    setupClipboardButtons();
 }
 
 // Get input values from the form
@@ -299,26 +349,16 @@ function getInputValues() {
     });
 
     // Add the wordlist value as the wordlist variable
-    values.wordlist = $("#wordlist").val();
+    // values.wordlist = $("#wordlist").val();
 
     return values;
 }
 
 // Replace placeholders in a command template with actual values
 function replacePlaceholders(command, values) {
-    let updatedCommand = command;
-    Object.keys(values).forEach(key => {
-        console.log(`Replacing placeholder: {{${key}}} with value: ${values[key]}`); // Debugging line
-        const placeholder = `{{${key}}}`;
-        updatedCommand = updatedCommand.replace(new RegExp(placeholder, "g"), values[key]);
-    });
-
-    // Handle the special case for the wordlist variable
-    if (values.wordlist) {
-        updatedCommand = updatedCommand.replace(/{{wordlist}}/g, values.wordlist);
-    }
-
-    return updatedCommand;
+    return Object.entries(values).reduce((cmd, [key, value]) => 
+        cmd.replace(new RegExp(`{{${key}}}`, "g"), value || ""),
+    command);
 }
 
 // Set up input change listener to update commands dynamically and save to localStorage
@@ -329,12 +369,62 @@ function setupInputChangeListener() {
     });
 }
 
+function applyLocalValues() {
+    inputvariables.forEach(variable => {
+        $(`#${variable.id}`).val(localStorage.getItem(variable.id) || variable.default);
+    });
+    
+    // After setting values, update commands
+    updateCommands();
+}
 // Apply default values to input fields
-function applyDefaultValuesOnLoad() {
+function applyDefaultValues() {
     inputvariables.forEach(variable => {
         $(`#${variable.id}`).val(variable.default);
     });
     
     // After setting values, update commands
     updateCommands();
+}
+
+function setupClipboardButtons() {
+    $(".copy-btn").on("click", function () {
+        const button = $(this);
+        navigator.clipboard.writeText(button.data("command"))
+            .then(() => {
+                button.removeClass("btn-secondary").addClass("btn-success");
+                setTimeout(() => button.removeClass("btn-success").addClass("btn-secondary"), 1000);
+            })
+            .catch(err => console.error("Failed to copy command:", err));
+    });
+}
+
+function resetInputValuesToDefault() {
+    inputvariables.forEach(variable => $(`#${variable.id}`).val(variable.default));
+    updateCommands();
+    saveInputValuesToLocalStorage();
+}
+
+// bullshit event setup function to expand input field on hover
+function setupHoverExpand() {
+    $("#inputSection").on({
+        mouseenter: function() {
+            const input = $(this).find("input");
+            const tempSpan = $("<span>")
+                .text(input.val())
+                .css({
+                    "font-family": input.css("font-family"),
+                    "font-size": input.css("font-size"),
+                    "visibility": "hidden",
+                    "white-space": "pre"
+                })
+                .appendTo("body");
+                
+            input.css("width", `${tempSpan.width() + 30}px`);
+            tempSpan.remove();
+        },
+        mouseleave: function() {
+            $(this).find("input").css("width", "");
+        }
+    }, ".hover-expand");
 }

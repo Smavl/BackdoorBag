@@ -1,3 +1,16 @@
 body {
     font-family: Arial, sans-serif;
 }
+.command-text {
+    white-space: pre-wrap; /* Preserve whitespace but allow wrapping */
+    word-wrap: break-word; /* Break long words if necessary */
+    overflow-wrap: break-word; /* Ensure compatibility with all browsers */
+}
+.hover-expand {
+    min-width: 300px; /* Ensure a minimum width */
+    border-radius: 8px; /* Aesthetic rounded corners */
+}
+
+.hover-expand:hover {
+    width: 100%; /* Allow full width on hover */
+}
