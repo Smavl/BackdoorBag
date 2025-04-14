@@ -20,14 +20,45 @@ const commands = [
         tags: ["brute force", "web"],
         default_wordlist: "/usr/share/seclists/Discovery/Web-Content/raft-large-directories.txt"
     },
+    // ffuf subdomain discovery
     {
-        id: "vhost_discovery",
+        id: "fuff_subdomain_discovery",
+        description: "Subdomain discovery using ffuf",
+        command: "ffuf -w {{wordlist}} -u http://{{target_domain}} -H \"Host: FUZZ.{{target_domain}}\" -fs 4242",
+        tool: "ffuf",
+        category: "DNS And VHOST Discovery",
+        tags: ["subdomain discovery", "dns"],
+        default_wordlist: "/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt"
+    },
+    // ffuf vhost discovery
+    {
+        id: "ffuf_vhost_discovery",
         description: "Virtual host discovery (without DNS records)",
         command: "ffuf -w {{wordlist}} -u http://{{target_ip}} -H \"Host: FUZZ\" -fs 4242",
         tool: "ffuf",
-        category: "VHOST Discovery",
+        category: "DNS And VHOST Discovery",
         tags: ["vhost discovery", "dns"],
         default_wordlist: "/usr/share/seclists/Discovery/Web-Content/vhost-wordlist.txt"
+    },
+    // gobuster vhost discovery
+    {
+        id: "gobuster_vhost_discovery",
+        description: "Virtual host discovery using gobuster",
+        command: "gobuster vhost -u http://{{target_ip}} -w {{wordlist}}",
+        tool: "gobuster",
+        category: "DNS And VHOST Discovery",
+        tags: ["vhost discovery", "dns"],
+        default_wordlist: "/usr/share/seclists/Discovery/Web-Content/vhost-wordlist.txt"
+    },
+    // gobuster subdomain discovery
+    {
+        id: "gobuster_subdomain_discovery",
+        description: "Subdomain discovery using gobuster",
+        command: "gobuster dns -d {{target_domain}} -w {{wordlist}}",
+        tool: "gobuster",
+        category: "DNS And VHOST Discovery",
+        tags: ["subdomain discovery", "dns"],
+        default_wordlist: "/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt"
     },
     // **** WEB SCANNING COMMANDS ****
     {
@@ -85,6 +116,16 @@ const commands = [
         tool: "hydra",
         category: "Authentication",
         tags: ["brute force", "ssh"],
+        default_wordlist: "/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+    },
+    // ftp brute force
+    {
+        id: "hydra_ftp_auth",
+        description: "Brute force FTP authentication using Hydra",
+        command: "hydra -l {{target_user}} -P {{wordlist}} {{target_ip}} ftp",
+        tool: "hydra",
+        category: "Authentication",
+        tags: ["ftp"],
         default_wordlist: "/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
     },
 ];
