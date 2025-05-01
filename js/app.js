@@ -64,7 +64,7 @@ const commands = [
     {
         id: "get_param_fuzz",
         description: "GET param fuzzing, filtering for invalid response size",
-        command: "ffuf -w {{wordlist}} -u http://{{target_ip}}/script.php?FUZZ=test_value -fs 4242",
+        command: "ffuf -w {{wordlist}} -u http://{{target_ip}}/index.php?FUZZ=test_value -fs 4242",
         tool: "ffuf",
         category: "Parameter fuzzing",
         tags: ["get param", "response filtering"],
@@ -387,7 +387,7 @@ function updateCommands() {
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
                             <pre class="command-text flex-grow-1">${replacedCommand}</pre>
-                            <button class="btn btn-secondary btn-sm copy-btn ms-3" data-command="${replacedCommand}">
+                            <button class="btn btn-secondary btn-sm copy-btn ms-3" data-command="${btoa(replacedCommand)}">
                                 <i class="fas fa-copy me-1"></i>Copy
                             </button>
                         </div>
@@ -453,7 +453,7 @@ function applyDefaultValues() {
 function setupClipboardButtons() {
     $(".copy-btn").on("click", function () {
         const button = $(this);
-        navigator.clipboard.writeText(button.data("command"))
+        navigator.clipboard.writeText(atob(button.data("command")))
             .then(() => {
                 const originalText = button.html();
                 button.removeClass("btn-secondary").addClass("btn-success");
