@@ -128,7 +128,64 @@ const commands = [
         tags: ["ftp"],
         default_wordlist: "/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
     },
+    // *** Linux PrivEsc  ***
+    // Filesystem Enumeration
+    {
+        id: "find_suid",
+        description: "Find suid binaries, and hide permission errors",
+        command: "find / -perm -4000 2>/dev/null",
+        tool: "find",
+        category: "Filesystem Enumeration",
+        tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration"],
+        default_wordlist: None
+    },
+    {
+        id: "root_file_in_home",
+        description: "root owned files in /home folders, and hide permission errors",
+        command: "find /home -user root 2>/dev/null",
+        tool: "find",
+        category: "Filesystem Enumeration",
+        tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
+        default_wordlist: None
+    },
+    {
+        id: "alien_files_in_my_folder",
+        description: "Files owned by other users in folders owned by me",
+        command: "for d in `find /var /etc /home /root /tmp /usr /opt /boot /sys -type d -user $(whoami) 2>/dev/null`; do find $d ! -user `whoami` -exec ls -l {} \; 2>/dev/null; done",
+        tool: "find",
+        category: "Filesystem Enumeration",
+        tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
+        default_wordlist: None
+    },
+    {
+        id: "root_files_readable_me",
+        description: "Files owned by root, readable by me but not world readable",
+        command: "find / -type f -user root ! -perm -o=r 2>/dev/null",
+        tool: "find",
+        category: "Filesystem Enumeration",
+        tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
+        default_wordlist: None
+    },
+    {
+        id: "files_owned_or_writable",
+        description: "Files owned by me or world writable",
+        command: "find / '(' -type f -or -type d ')' '(' '(' -user $USER ')' -or '(' -perm -o=w ')' ')' ! -path \"/proc/*\" ! -path \"/sys/*\" ! -path \"$HOME/*\" 2>/dev/null",
+        tool: "find",
+        category: "Filesystem Enumeration",
+        tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
+        default_wordlist: None
+    },
+    {
+        id: "writable_user_groups",
+        description: "Find files writable by any group of the user",
+        command: "for g in `groups`; do find \( -type f -or -type d \) -group $g -perm -g=w 2>/dev/null | grep -v '/proc/' | grep -v $HOME; done",
+        tool: "find",
+        category: "Filesystem Enumeration",
+        tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
+        default_wordlist: None
+    },
 ];
+// 
 
 // Wordlist paths
 const wordlistPaths = [
