@@ -137,7 +137,7 @@ const commands = [
         tool: "find",
         category: "Filesystem Enumeration",
         tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration"],
-        default_wordlist: None
+        default_wordlist: undefined
     },
     {
         id: "root_file_in_home",
@@ -146,7 +146,7 @@ const commands = [
         tool: "find",
         category: "Filesystem Enumeration",
         tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
-        default_wordlist: None
+        default_wordlist: undefined
     },
     {
         id: "alien_files_in_my_folder",
@@ -155,7 +155,7 @@ const commands = [
         tool: "find",
         category: "Filesystem Enumeration",
         tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
-        default_wordlist: None
+        default_wordlist: undefined
     },
     {
         id: "root_files_readable_me",
@@ -164,7 +164,7 @@ const commands = [
         tool: "find",
         category: "Filesystem Enumeration",
         tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
-        default_wordlist: None
+        default_wordlist: undefined
     },
     {
         id: "files_owned_or_writable",
@@ -173,7 +173,7 @@ const commands = [
         tool: "find",
         category: "Filesystem Enumeration",
         tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
-        default_wordlist: None
+        default_wordlist: undefined
     },
     {
         id: "writable_user_groups",
@@ -182,7 +182,7 @@ const commands = [
         tool: "find",
         category: "Filesystem Enumeration",
         tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
-        default_wordlist: None
+        default_wordlist: undefined
     },
 ];
 // 
