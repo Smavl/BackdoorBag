@@ -1,24 +1,37 @@
+// Wordslists
+const wordlists = {
+    // Web
+    "raft-large-directories": "/usr/share/seclists/Discovery/Web-Content/raft-large-directories.txt",
+    "raft-large-files": "/usr/share/seclists/Discovery/Web-Content/raft-large-files.txt",
+    "n0kovo_subdomains.txt": "/usr/share/seclists/Discovery/DNS/n0kovo_subdomains.txt",
+    // Fuzzing
+    "param-names": "/usr/share/seclists/Discovery/Web-Content/param-names.txt",
+    "param-values": "/usr/share/seclists/Discovery/Web-Content/param-values.txt",
+    "rockyou": "/usr/share/wordlists/rockyou.txt",
+    "big-list-of-naughty-strings.txt": "/usr/share/seclists/Fuzzing/big-list-of-naughty-strings.txt",
+}
+
 // Commands array
 const commands = [
     // **** WEB DISCOVERY COMMANDS ****
     { // fuff dir discovery
         id: "fuff_dir_discovery",
         description: "Directory discovery using ffuf",
-        command: "ffuf -w {{wordlist}} -u http://{{target_ip}}/FUZZ",
+        command: "ffuf -w {{wordlist}} -u http://{{target_domain}}/FUZZ",
         tool: "ffuf",
         category: "Web Discovery",
         tags: ["brute force", "web"],
-        default_wordlist: "/usr/share/seclists/Discovery/Web-Content/raft-large-directories.txt"
+        default_wordlist: wordlists["raft-large-directories"]
     },
     // gobuster dir discovery
     {
         id: "gobuster_dir_discovery",
         description: "Directory discovery using gobuster",
-        command: "gobuster dir -u http://{{target_ip}} -w {{wordlist}}",
+        command: "gobuster dir -u http://{{target_domain}} -w {{wordlist}}",
         tool: "gobuster",
         category: "Web Discovery",
         tags: ["brute force", "web"],
-        default_wordlist: "/usr/share/seclists/Discovery/Web-Content/raft-large-directories.txt"
+        default_wordlist: wordlists["raft-large-directories"]
     },
     // ffuf subdomain discovery
     {
@@ -28,9 +41,10 @@ const commands = [
         tool: "ffuf",
         category: "DNS And VHOST Discovery",
         tags: ["subdomain discovery", "dns"],
-        default_wordlist: "/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt"
+        default_wordlist: wordlists["n0kovo_subdomains.txt"]
     },
     // ffuf vhost discovery
+    // Delete?
     {
         id: "ffuf_vhost_discovery",
         description: "Virtual host discovery (without DNS records)",
@@ -38,17 +52,17 @@ const commands = [
         tool: "ffuf",
         category: "DNS And VHOST Discovery",
         tags: ["vhost discovery", "dns"],
-        default_wordlist: "/usr/share/seclists/Discovery/Web-Content/vhost-wordlist.txt"
+        default_wordlist: wordlists["n0kovo_subdomains.txt"]
     },
     // gobuster vhost discovery
     {
         id: "gobuster_vhost_discovery",
         description: "Virtual host discovery using gobuster",
-        command: "gobuster vhost -u http://{{target_ip}} -w {{wordlist}}",
+        command: "gobuster vhost -u {{target_ip}} -w {{wordlist}}",
         tool: "gobuster",
         category: "DNS And VHOST Discovery",
         tags: ["vhost discovery", "dns"],
-        default_wordlist: "/usr/share/seclists/Discovery/Web-Content/vhost-wordlist.txt"
+        default_wordlist: wordlists["n0kovo_subdomains.txt"]
     },
     // gobuster subdomain discovery
     {
@@ -58,44 +72,44 @@ const commands = [
         tool: "gobuster",
         category: "DNS And VHOST Discovery",
         tags: ["subdomain discovery", "dns"],
-        default_wordlist: "/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt"
+        default_wordlist: wordlists["n0kovo_subdomains.txt"]
     },
     // **** WEB SCANNING COMMANDS ****
     {
         id: "get_param_fuzz",
         description: "GET param fuzzing, filtering for invalid response size",
-        command: "ffuf -w {{wordlist}} -u http://{{target_ip}}/index.php?FUZZ=test_value -fs 4242",
+        command: "ffuf -w {{wordlist}} -u http://{{target_domain}}/index.php?FUZZ=42 -fs 4242",
         tool: "ffuf",
         category: "Parameter fuzzing",
         tags: ["get param", "response filtering"],
-        default_wordlist: "/usr/share/seclists/Discovery/Web-Content/param-names.txt"
+        default_wordlist: wordlists["param-names"]
     },
     {
         id: "get_param_values",
         description: "GET parameter fuzzing if the param is known (fuzzing values) and filtering 401",
-        command: "ffuf -w {{wordlist}} -u http://{{target_ip}}/script.php?valid_name=FUZZ -fc 401",
+        command: "ffuf -w {{wordlist}} -u http://{{target_domain}}/script.php?valid_name=FUZZ -fc 401",
         tool: "ffuf",
         category: "Parameter fuzzing",
         tags: ["get param", "filter 401"],
-        default_wordlist: "/usr/share/seclists/Discovery/Web-Content/param-values.txt"
+        default_wordlist: wordlists["param-values"]
     },
     {
         id: "post_param_fuzz",
         description: "POST parameter fuzzing with filtering for status code 401",
-        command: "ffuf -w {{wordlist}} -X POST -d \"username=admin\\&password=FUZZ\" -u http://{{target_ip}}/login.php -fc 401",
+        command: "ffuf -w {{wordlist}} -X POST -d \"username=admin\\&password=FUZZ\" -u http://{{target_domain}}/login.php -fc 401",
         tool: "ffuf",
         category: ["Authentication", "Parameter fuzzing"],
         tags: ["post param", "filter 401"],
-        default_wordlist: "/usr/share/seclists/Discovery/Web-Content/post-data.txt"
+        default_wordlist: wordlists["rockyou"]
     },
     {
         id: "post_json_fuzz",
         description: "Fuzz POST JSON data. Match all responses not containing text 'error'.",
-        command: `ffuf -w {{wordlist}} -u http://{{target_ip}}/ -X POST -H "Content-Type: application/json" -d '{"name": "FUZZ", "anotherkey": "anothervalue"}' -fr "error"`,
+        command: `ffuf -w {{wordlist}} -u http://{{target_domain}}/ -X POST -H "Content-Type: application/json" -d '{"value": "FUZZ", "value2": "anothervalue"}' -fr "error"`,
         tool: "ffuf",
         category: "JSON fuzzing",
         tags: ["post","json", "response filtering"],
-        default_wordlist: "/usr/share/seclists/Discovery/Web-Content/json-entries.txt"
+        default_wordlist: undefined
     },
     // *** AUTHENTICATION COMMANDS ***
     // Hydra HTTP Basic Auth
@@ -106,7 +120,7 @@ const commands = [
         tool: "hydra",
         category: "Authentication",
         tags: ["brute force", "http basic auth"],
-        default_wordlist: "/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+        default_wordlist: wordlists["rockyou"]
     },
     /// *** SSH AUTHENTICATION COMMANDS ***
     {
@@ -116,7 +130,7 @@ const commands = [
         tool: "hydra",
         category: "Authentication",
         tags: ["brute force", "ssh"],
-        default_wordlist: "/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+        default_wordlist: wordlists["rockyou"]
     },
     // ftp brute force
     {
@@ -126,7 +140,7 @@ const commands = [
         tool: "hydra",
         category: "Authentication",
         tags: ["ftp"],
-        default_wordlist: "/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+        default_wordlist: wordlists["rockyou"]
     },
     // *** Linux PrivEsc  ***
     // Filesystem Enumeration
@@ -151,7 +165,7 @@ const commands = [
     {
         id: "alien_files_in_my_folder",
         description: "Files owned by other users in folders owned by me",
-        command: "for d in `find /var /etc /home /root /tmp /usr /opt /boot /sys -type d -user $(whoami) 2>/dev/null`; do find $d ! -user `whoami` -exec ls -l {} \; 2>/dev/null; done",
+        command: "for d in `find /var /etc /home /root /tmp /usr /opt /boot /sys -type d -user $(whoami) 2>/dev/null`; do find $d ! -user `whoami` -exec ls -l {} \\; 2>/dev/null; done",
         tool: "find",
         category: "Filesystem Enumeration",
         tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
@@ -188,19 +202,7 @@ const commands = [
 // 
 
 // Wordlist paths
-const wordlistPaths = [
-    // web content
-    "/usr/share/seclists/Discovery/Web-Content/raft-large-directories.txt",
-    "/usr/share/seclists/Discovery/Web-Content/raft-large-files.txt",
-    // Passwords
-    "/usr/share/wordlists/rockyou.txt",
-    // Usernames
-    "/usr/share/seclists/Usernames/xato-net-10-million-usernames.txt",
-    "/usr/share/seclists/Usernames/Names/names.txt",
-    // subdomains
-    "/usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt",
-    "/usr/share/seclists/Discovery/DNS/bitquark-subdomains-top100000.txt",
-];
+const wordlistPaths = Object.values(wordlists);
 
 // Input variables configuration 
 const inputvariables = [
