@@ -50,6 +50,18 @@
         
         <!-- Input section -->
         <div class="container mb-4 row g-3 p-4 rounded" id="inputSection">
+            <div class="var-panel-header">
+                <span class="var-panel-title">variables</span>
+                <label class="var-autohide" title="Show only the variables used by the commands in view">
+                    <input type="checkbox" id="varAutoHide" class="var-autohide-input" checked>
+                    <span class="var-autohide-track" aria-hidden="true"><span class="var-autohide-knob"></span></span>
+                    <span class="var-autohide-label">auto-hide</span>
+                </label>
+                <button type="button" class="var-panel-collapse" id="varPanelCollapse" aria-expanded="true" aria-label="Hide variable fields">
+                    <i class="fas fa-chevron-up" aria-hidden="true"></i>
+                </button>
+            </div>
+            <p class="var-panel-empty var-hidden" id="varPanelEmpty">These commands take no variables.</p>
             <!-- Input variables will be added here -->
         </div>
         

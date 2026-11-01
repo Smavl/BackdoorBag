@@ -317,12 +317,123 @@ $(document).ready(function () {
     loadActiveTab(); // Load the last active tab
 
     setupWordlistPicker();
+    setupVariablesPanel();
 
     // Add event listener for the reset button
     $("#resetButton").on("click", function () {
         resetInputValuesToDefault();
     });
 });
+
+// --- Variables panel: field-visibility modes + collapse ---
+
+// auto-hide on  = show only variables the on-screen commands use (contextual)
+// auto-hide off = show every variable any command uses (static)
+let panelAutoHide = true;
+
+// The category of the currently shown tab (used when auto-hide is on)
+function getActiveCategory() {
+    const activePaneId = $("#pills-tabContent .tab-pane.active").attr("id");
+    return getUniqueCategories().find(category => formatCategoryToId(category) === activePaneId);
+}
+
+// Which commands are "on screen" right now: search matches, else the active tab
+function getVisibleCommands() {
+    const query = ($("#commandSearch").val() || "").trim();
+    if (query) {
+        return searchCommands(query, getInputValues());
+    }
+
+    const category = getActiveCategory();
+    return category ? commands.filter(command => commandIsInCategory(command, category)) : commands;
+}
+
+// The variable ids to display given the current auto-hide state
+function getVisibleVariableIds() {
+    return panelAutoHide
+        ? variablesUsedBy(getVisibleCommands()) // only what the current view uses
+        : variablesUsedBy(commands);            // every variable any command uses
+}
+
+// Show/hide each field for the current state and sync the toggle
+function applyPanelVisibility() {
+    const visibleIds = getVisibleVariableIds();
+
+    inputvariables.forEach(variable => {
+        const hidden = !visibleIds.has(variable.id);
+        $(`#inputSection [data-var-id="${variable.id}"]`).toggleClass("var-hidden", hidden);
+    });
+
+    // With auto-hide on, a tab/search can match only variable-free commands (the
+    // find/cp privesc ones). Show a hint instead of a blank panel, and hide the
+    // lone reset button so it doesn't sit there on its own.
+    const isEmpty = visibleIds.size === 0;
+    $("#varPanelEmpty").toggleClass("var-hidden", !isEmpty);
+    $(".reset-wrapper").toggleClass("var-hidden", isEmpty);
+
+    $("#varAutoHide").prop("checked", panelAutoHide);
+}
+
+function setPanelAutoHide(on) {
+    panelAutoHide = on;
+    try {
+        localStorage.setItem("panelAutoHide", on ? "true" : "false");
+    } catch (error) {
+        /* localStorage may be unavailable; the setting still applies this session */
+    }
+    applyPanelVisibility();
+}
+
+function setPanelCollapsed(collapsed) {
+    $("#inputSection").toggleClass("collapsed", collapsed);
+    $("#varPanelCollapse")
+        .attr("aria-expanded", collapsed ? "false" : "true")
+        .attr("aria-label", collapsed ? "Show variable fields" : "Hide variable fields");
+    try {
+        localStorage.setItem("panelCollapsed", collapsed ? "true" : "false");
+    } catch (error) {
+        /* ignore */
+    }
+}
+
+function setupVariablesPanel() {
+    let savedAutoHide = null;
+    try {
+        savedAutoHide = localStorage.getItem("panelAutoHide");
+    } catch (error) {
+        /* ignore */
+    }
+    panelAutoHide = savedAutoHide === null ? true : savedAutoHide === "true";
+
+    $("#varAutoHide").on("change", function () {
+        setPanelAutoHide(this.checked);
+    });
+
+    $("#varPanelCollapse").on("click", function () {
+        setPanelCollapsed(!$("#inputSection").hasClass("collapsed"));
+    });
+
+    // When auto-hide is on, the field set tracks the active tab
+    $("#pills-tab").on("shown.bs.tab", function () {
+        if (panelAutoHide) {
+            applyPanelVisibility();
+        }
+    });
+
+    // Collapse default: expanded on desktop, collapsed on narrow screens
+    let savedCollapsed = null;
+    try {
+        savedCollapsed = localStorage.getItem("panelCollapsed");
+    } catch (error) {
+        /* ignore */
+    }
+    const startCollapsed = savedCollapsed === null
+        ? window.matchMedia("(max-width: 600px)").matches
+        : savedCollapsed === "true";
+
+    setPanelCollapsed(startCollapsed);
+    applyPanelVisibility();
+}
 
 // Wordlist combobox: free-text input plus a menu of known wordlists
 function setupWordlistPicker() {
@@ -365,7 +476,7 @@ function generateInputFields() {
 
     // Add the reset button
     inputSection.append(`
-        <div class="mb-3">
+        <div class="mb-3 reset-wrapper">
             <button id="resetButton" class="btn btn-danger btn-sm">Reset to Default</button>
         </div>
     `);
@@ -385,7 +496,7 @@ function createInputField(id, label, defaultValue) {
         `).join("");
 
         return `
-            <div class="wordlist-field">
+            <div class="wordlist-field" data-var-id="${id}">
                 <label for="${id}" class="form-label">${label}</label>
                 <div class="input-group wordlist-combo">
                     <input type="text" class="form-control" id="${id}" placeholder="Uses each command's default" value="" spellcheck="false" autocomplete="off">
@@ -402,7 +513,7 @@ function createInputField(id, label, defaultValue) {
         `;
     } else {
         return `
-            <div class="mb-3 col-auto">
+            <div class="mb-3 col-auto" data-var-id="${id}">
                 <label for="${id}" class="form-label">${label}</label>
                 <input type="text" class="form-control" id="${id}" placeholder="${label}" value="${defaultValue}">
             </div>
@@ -432,6 +543,23 @@ function generateTabsAndContent() {
 // A command's category may be a single string or an array of strings
 function getCommandCategories(command) {
     return [].concat(command.category);
+}
+
+// The set of variable ids a command's template references via {{id}}
+function getCommandVariables(command) {
+    const ids = new Set();
+    commandToString(command.command).replace(/{{(\w+)}}/g, (match, id) => {
+        ids.add(id);
+        return match;
+    });
+    return ids;
+}
+
+// Union of variable ids referenced by a list of commands
+function variablesUsedBy(commandList) {
+    const ids = new Set();
+    commandList.forEach(command => getCommandVariables(command).forEach(id => ids.add(id)));
+    return ids;
 }
 
 function commandIsInCategory(command, category) {
@@ -647,6 +775,9 @@ function updateCommandSearch(values = getInputValues()) {
     if (!isSearching) {
         $("#commandSearchStatus").text("");
         $("#commandSearchCommands").empty();
+        if (panelAutoHide) {
+            applyPanelVisibility(); // back to the active tab's variables
+        }
         return;
     }
 
@@ -664,6 +795,11 @@ function updateCommandSearch(values = getInputValues()) {
     $("#commandSearchCommands").html(
         matches.map(command => renderCommandCard(command, values)).join("")
     );
+
+    // With auto-hide on, the field set follows the visible command set
+    if (panelAutoHide) {
+        applyPanelVisibility();
+    }
 }
 
 function setupCommandSearch() {
@@ -724,7 +860,9 @@ function replacePlaceholders(command, values) {
 
 // Set up input change listener to update commands dynamically and save to localStorage
 function setupInputChangeListener() {
-    $("#inputSection").on("input", "input", function () {
+    // Only the variable text fields, not the auto-hide checkbox (whose own input
+    // event would otherwise re-render and reset the checkbox mid-toggle).
+    $("#inputSection").on("input", ".form-control", function () {
         updateCommands();
         saveInputValuesToLocalStorage(); // Save values to localStorage on change
     });
