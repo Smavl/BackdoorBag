@@ -1,4 +1,4 @@
-// Wordslists
+// Wordlists
 const wordlists = {
     // Web
     "raft-large-directories": "/usr/share/seclists/Discovery/Web-Content/raft-large-directories.txt",
@@ -134,7 +134,7 @@ const commands = [
     {
         id: "post_param_fuzz",
         description: "POST parameter fuzzing with filtering for status code 401",
-        command: "ffuf -w {{wordlist}} -X POST -d \"username=admin\\&password=FUZZ\" -u http://{{target_domain}}/login.php -fc 401",
+        command: "ffuf -w {{wordlist}} -X POST -d \"username={{target_user}}\\&password=FUZZ\" -u http://{{target_domain}}/login.php -fc 401",
         tool: "ffuf",
         category: ["Authentication", "Parameter fuzzing"],
         tags: ["post param", "filter 401"],
@@ -154,7 +154,7 @@ const commands = [
     {
         id: "hydra_http_basic_auth",
         description: "Brute force HTTP Basic Auth using Hydra",
-        command: "hydra -l {{target_user}} -P {{wordlist}} {{target_ip}} http-get /secret",
+        command: "hydra -l {{target_user}} -P {{wordlist}} {{target_ip}} http-get {{target_path}}",
         tool: "hydra",
         category: "Authentication",
         tags: ["brute force", "http basic auth"],
@@ -240,7 +240,7 @@ const commands = [
     {
         id: "writable_user_groups",
         description: "Find files writable by any group of the user",
-        command: "for g in `groups`; do find \( -type f -or -type d \) -group $g -perm -g=w 2>/dev/null | grep -v '/proc/' | grep -v $HOME; done",
+        command: "for g in `groups`; do find \\( -type f -or -type d \\) -group $g -perm -g=w 2>/dev/null | grep -v '/proc/' | grep -v $HOME; done",
         tool: "find",
         category: "Filesystem Enumeration",
         tags: ["find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
@@ -248,18 +248,18 @@ const commands = [
     },
     // Filesystem operations
     {
-    id: "copy_bash_to_tmp",
-    description: "Copy Bash to /tmp with with root permissions",
-    command: [
-        "cp /bin/bash /tmp/bash; chmod 4755 /tmp/bash",
-        "# to get root shell use -p flag",
-        "/tmp/bash -p",
+        id: "copy_bash_to_tmp",
+        description: "Copy Bash to /tmp with root permissions",
+        command: [
+            "cp /bin/bash /tmp/bash; chmod 4755 /tmp/bash",
+            "# to get root shell use -p flag",
+            "/tmp/bash -p",
         ],
-    tool: "cp/chmod",
-    category: "Filesystem Operations",
-    tags: ["copy", "permissions","Privilege Escalation"],
-    default_wordlist: undefined
-},
+        tool: "cp/chmod",
+        category: "Filesystem Operations",
+        tags: ["copy", "permissions", "Privilege Escalation"],
+        default_wordlist: undefined
+    },
 ];
 // 
 
@@ -270,7 +270,7 @@ const wordlistPaths = Object.values(wordlists);
 const inputvariables = [
     { id: "target_ip", label: "Target IP", default: "10.10.10.10" },
     { id: "target_port", label: "Target Port", default: "80" },
-    { id: "local_ip", label: "Local Ip", default: "10.10.10.69" },
+    { id: "local_ip", label: "Local IP", default: "10.10.10.69" },
     { id: "local_port", label: "Local Port", default: "9001" },
     { id: "target_path", label: "Target Path", default: "/" },
     { id: "target_domain", label: "Target Domain", default: "example.com" },
@@ -304,11 +304,9 @@ function setupTabChangeListener() {
 
 // Initialize the application
 $(document).ready(function () {
-    loadInputValuesFromLocalStorage(); // Load saved input values
     generateInputFields();
     generateTabsAndContent();
-    applyDefaultValues();
-    applyLocalValues();
+    applyLocalValues(); // Fill inputs from localStorage (or defaults) and render commands once
     setupInputChangeListener();
     setupInlineVariableEditing();
     setupClipboardButtons();
@@ -346,16 +344,6 @@ function setupWordlistPicker() {
         wordlistInput.val($(this).attr("data-value"));
         updateCommands();
         saveInputValuesToLocalStorage();
-    });
-}
-
-// Load input values from localStorage
-function loadInputValuesFromLocalStorage() {
-    inputvariables.forEach(variable => {
-        const savedValue = localStorage.getItem(variable.id);
-        if (savedValue !== null) {
-            $(`#${variable.id}`).val(savedValue); // Set the value in the input field
-        }
     });
 }
 
@@ -441,9 +429,18 @@ function generateTabsAndContent() {
     });
 }
 
+// A command's category may be a single string or an array of strings
+function getCommandCategories(command) {
+    return [].concat(command.category);
+}
+
+function commandIsInCategory(command, category) {
+    return getCommandCategories(command).includes(category);
+}
+
 // Get unique categories from the commands array
 function getUniqueCategories() {
-    const allCategories = commands.flatMap(command => command.category);
+    const allCategories = commands.flatMap(getCommandCategories);
     return [...new Set(allCategories)];
 }
 
@@ -512,18 +509,6 @@ function renderCommandTemplate(command, values) {
 
 // Create a tab button
 function createTabButton(tabId, category, isActive) {
-    // Define icons for different categories
-    const iconMap = {
-        "Web Discovery": "fa-search",
-        "VHOST Discovery": "fa-server",
-        "Parameter fuzzing": "fa-code",
-        "JSON fuzzing": "fa-brackets-curly",
-        "Authentication": "fa-lock",
-        "Default": "fa-terminal"
-    };
-    
-    const icon = iconMap[category] || iconMap["Default"];
-    
     return `
         <li class="nav-item" role="presentation">
             <button class="nav-link ${isActive ? "active" : ""}" 
@@ -534,30 +519,18 @@ function createTabButton(tabId, category, isActive) {
                 role="tab" 
                 aria-controls="${tabId}" 
                 aria-selected="${isActive}">
-                <i class="fas ${icon} me-2"></i>${category}
+                ${category}
             </button>
         </li>
     `;
 }
 
-// Create tab content
+// Create tab content; the command cards are filled in by updateCommands()
 function createTabContent(tabId, category, isActive) {
-    const commandsForCategory = commands.filter(command => command.category.includes(category));
-    const values = getInputValues();
-    const commandList = commandsForCategory.map(command => {
-        const commandValues = getCommandValues(command, values);
-
-        return `
-            <li class="list-group-item bg-dark text-light"><pre class="command-text mb-0">${renderCommandTemplate(command.command, commandValues)}</pre></li>
-        `;
-    }).join("");
-
     return `
         <div class="tab-pane fade ${isActive ? "show active" : ""}" id="${tabId}" role="tabpanel" aria-labelledby="${tabId}-tab">
             <h3>${category}</h3>
-            <ul class="list-group" id="${tabId}-commands">
-                ${commandList}
-            </ul>
+            <div class="command-list" id="${tabId}-commands"></div>
         </div>
     `;
 }
@@ -640,7 +613,7 @@ function getCommandSearchText(command, values) {
     return [
         command.description,
         command.tool,
-        ...[].concat(command.category),
+        ...getCommandCategories(command),
         ...command.tags,
         commandToString(command.command),
         replacePlaceholders(command.command, commandValues),
@@ -712,7 +685,7 @@ function updateCommands() {
     const uniqueCategories = getUniqueCategories();
 
     uniqueCategories.forEach(category => {
-        const categoryCommands = commands.filter(command => command.category.includes(category));
+        const categoryCommands = commands.filter(command => commandIsInCategory(command, category));
         const updatedCommands = categoryCommands.map(command => renderCommandCard(command, values));
         const tabId = formatCategoryToId(category);
         $(`#${tabId}-commands`).html(updatedCommands.join(""));
@@ -760,15 +733,6 @@ function setupInputChangeListener() {
 function applyLocalValues() {
     inputvariables.forEach(variable => {
         $(`#${variable.id}`).val(localStorage.getItem(variable.id) || variable.default);
-    });
-    
-    // After setting values, update commands
-    updateCommands();
-}
-// Apply default values to input fields
-function applyDefaultValues() {
-    inputvariables.forEach(variable => {
-        $(`#${variable.id}`).val(variable.default);
     });
     
     // After setting values, update commands
@@ -827,10 +791,14 @@ function beginInlineVariableEdit(element) {
         }
 
         editFinished = true;
-        const newValue = shouldSave ? editor.val() : originalValue;
+        // An unchanged value is a cancel, not a save. Saving it would copy a
+        // per-command default (e.g. this command's default wordlist) into the
+        // global variable and change every other command with it.
+        const hasChanged = shouldSave && editor.val() !== originalValue;
+        const newValue = hasChanged ? editor.val() : originalValue;
         editor.replaceWith(createEditableVariable(variableId, newValue));
 
-        if (!shouldSave) {
+        if (!hasChanged) {
             return;
         }
 
