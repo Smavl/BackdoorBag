@@ -318,32 +318,36 @@ $(document).ready(function () {
     setupTabChangeListener(); // Set up tab persistence
     loadActiveTab(); // Load the last active tab
 
-    const wordlistDropdown = $("#wordlist").siblings(".dropdown-menu");
-    const wordlistInput = $("#wordlist");
-
-    // Handle dropdown selection
-    wordlistDropdown.on("click", "a", function (event) {
-        event.preventDefault();
-        const selectedValue = $(this).data("value");
-
-        if (selectedValue === "custom") {
-            wordlistInput.val(""); // Clear the input field for custom entry
-            wordlistInput.focus(); // Focus the input field
-        } else {
-            wordlistInput.val(selectedValue); // Set the selected wordlist value
-        }
-
-        updateCommands(); // Update commands dynamically
-        saveInputValuesToLocalStorage(); // Save the updated wordlist to localStorage
-    });
+    setupWordlistPicker();
 
     // Add event listener for the reset button
     $("#resetButton").on("click", function () {
         resetInputValuesToDefault();
     });
-
-    setupHoverExpand(); // Set up hover expand functionality
 });
+
+// Wordlist combobox: free-text input plus a menu of known wordlists
+function setupWordlistPicker() {
+    const wordlistInput = $("#wordlist");
+    const wordlistCombo = wordlistInput.closest(".wordlist-combo");
+    const wordlistMenu = wordlistCombo.find(".wordlist-menu");
+
+    // Highlight the current value whenever the menu opens
+    wordlistCombo.on("show.bs.dropdown", function () {
+        const currentValue = wordlistInput.val();
+        wordlistMenu.find(".wordlist-option").each(function () {
+            const isActive = $(this).attr("data-value") === currentValue;
+            $(this).toggleClass("active", isActive).attr("aria-current", isActive ? "true" : null);
+        });
+    });
+
+    wordlistMenu.on("click", ".wordlist-option", function (event) {
+        event.preventDefault();
+        wordlistInput.val($(this).attr("data-value"));
+        updateCommands();
+        saveInputValuesToLocalStorage();
+    });
+}
 
 // Load input values from localStorage
 function loadInputValuesFromLocalStorage() {
@@ -384,20 +388,27 @@ function createInputField(id, label, defaultValue) {
     if (id === "wordlist") {
         // Generate dropdown items dynamically from wordlistPaths
         const dropdownItems = wordlistPaths.map(path => `
-            <li><a class="dropdown-item" href="#" data-value="${path}">${path.split('/').pop()}</a></li>
+            <li>
+                <a class="dropdown-item wordlist-option" href="#" data-value="${path}" title="${path}">
+                    <span class="wordlist-name">${path.split('/').pop()}</span>
+                    <span class="wordlist-path">${path}</span>
+                </a>
+            </li>
         `).join("");
 
         return `
-            <div class="mb-3 col-auto align-items-left">
+            <div class="wordlist-field">
                 <label for="${id}" class="form-label">${label}</label>
-                <div class="input-group hover-expand">
-                    <button type="button" class="btn btn-secondary btn-sm dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                        <span class="visually-hidden">Toggle Dropdown</span>
+                <div class="input-group wordlist-combo">
+                    <input type="text" class="form-control" id="${id}" placeholder="Uses each command's default" value="" spellcheck="false" autocomplete="off">
+                    <button type="button" class="btn wordlist-toggle" data-bs-toggle="dropdown" data-bs-reference="parent" aria-expanded="false" aria-label="Choose a wordlist">
+                        <i class="fas fa-chevron-down" aria-hidden="true"></i>
                     </button>
-                    <ul class="dropdown-menu">
+                    <ul class="dropdown-menu dropdown-menu-end wordlist-menu">
+                        <li><a class="dropdown-item wordlist-option wordlist-option-default" href="#" data-value="">Use each command's default</a></li>
+                        <li><hr class="dropdown-divider"></li>
                         ${dropdownItems}
                     </ul>
-                    <input type="text" class="form-control " id="${id}" placeholder="Uses each command's default" value="${defaultValue}">
                 </div>
             </div>
         `;
@@ -1010,28 +1021,4 @@ function resetInputValuesToDefault() {
     inputvariables.forEach(variable => $(`#${variable.id}`).val(variable.default));
     updateCommands();
     saveInputValuesToLocalStorage();
-}
-
-// bullshit event setup function to expand input field on hover
-function setupHoverExpand() {
-    $("#inputSection").on({
-        mouseenter: function() {
-            const input = $(this).find("input");
-            const tempSpan = $("<span>")
-                .text(input.val())
-                .css({
-                    "font-family": input.css("font-family"),
-                    "font-size": input.css("font-size"),
-                    "visibility": "hidden",
-                    "white-space": "pre"
-                })
-                .appendTo("body");
-                
-            input.css("width", `${tempSpan.width() + 30}px`);
-            tempSpan.remove();
-        },
-        mouseleave: function() {
-            $(this).find("input").css("width", "");
-        }
-    }, ".hover-expand");
 }

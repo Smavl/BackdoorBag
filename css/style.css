@@ -254,14 +254,104 @@ header p.text-muted {
     box-shadow: inset 3px 0 0 var(--accent);
 }
 
-.input-group,
-.hover-expand {
+.input-group {
     min-width: 0;
     border-radius: 2px;
 }
 
-.hover-expand:hover {
+/* Wordlist combobox */
+#inputSection > .wordlist-field {
+    grid-column: span 2;
+    min-width: 0;
+}
+
+.wordlist-combo {
+    flex-wrap: nowrap;
+}
+
+.wordlist-combo > .form-control {
+    min-width: 0;
+    border-radius: 2px 0 0 2px !important;
+    text-overflow: ellipsis;
+}
+
+.input-group.wordlist-combo > .wordlist-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 37px;
+    padding: 0;
+    background: var(--bg);
+    color: var(--muted);
+    border: 1px solid #34342f;
+    border-radius: 0 2px 2px 0 !important;
+}
+
+.input-group.wordlist-combo > .wordlist-toggle:hover,
+.input-group.wordlist-combo > .wordlist-toggle:focus-visible,
+.input-group.wordlist-combo > .wordlist-toggle[aria-expanded="true"] {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: none;
+}
+
+.wordlist-toggle i {
+    font-size: 0.7rem;
+    transition: transform 0.15s ease;
+}
+
+.wordlist-toggle[aria-expanded="true"] i {
+    transform: rotate(180deg);
+}
+
+.wordlist-menu {
     width: 100%;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-block: 0.25rem;
+}
+
+.wordlist-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    padding-block: 0.35rem;
+    white-space: nowrap;
+}
+
+.wordlist-name {
+    color: var(--text);
+}
+
+.wordlist-path {
+    overflow: hidden;
+    color: #6f6d65;
+    font-size: 0.68rem;
+    text-overflow: ellipsis;
+}
+
+.wordlist-option-default {
+    color: var(--muted);
+    font-style: italic;
+}
+
+.wordlist-option:hover .wordlist-name,
+.wordlist-option:focus .wordlist-name,
+.wordlist-option.active .wordlist-name {
+    color: var(--accent);
+}
+
+.wordlist-option.active,
+.wordlist-option:active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.dropdown-divider {
+    border-color: var(--border);
 }
 
 .input-group .btn {
@@ -674,6 +764,10 @@ footer a.text-muted:hover {
 
     #inputSection {
         grid-template-columns: 1fr;
+    }
+
+    #inputSection > .wordlist-field {
+        grid-column: auto;
     }
 
     .card-body > .d-flex {
