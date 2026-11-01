@@ -263,6 +263,8 @@ $(document).ready(function () {
     setupInputChangeListener();
     setupInlineVariableEditing();
     setupClipboardButtons();
+    setupHelpDialog();
+    updateFooterYear();
     setupTabChangeListener(); // Set up tab persistence
     loadActiveTab(); // Load the last active tab
 
@@ -698,12 +700,52 @@ function getCommandTextFromCard(card) {
     return commandText.text();
 }
 
+function fallbackCopyTextToClipboard(text) {
+    return new Promise((resolve, reject) => {
+        const activeElement = document.activeElement;
+        const textArea = document.createElement("textarea");
+
+        textArea.value = text;
+        textArea.setAttribute("readonly", "");
+        textArea.style.position = "fixed";
+        textArea.style.top = "0";
+        textArea.style.left = "-9999px";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        textArea.setSelectionRange(0, textArea.value.length);
+
+        try {
+            if (!document.execCommand("copy")) {
+                throw new Error("The browser rejected the fallback copy command.");
+            }
+
+            resolve();
+        } catch (error) {
+            reject(error);
+        } finally {
+            textArea.remove();
+            activeElement?.focus();
+        }
+    });
+}
+
+function copyTextToClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+        return navigator.clipboard.writeText(text)
+            .catch(() => fallbackCopyTextToClipboard(text));
+    }
+
+    return fallbackCopyTextToClipboard(text);
+}
+
 function setupClipboardButtons() {
     $("#pills-tabContent").on("click", ".copy-btn", function () {
         const button = $(this);
         const commandText = getCommandTextFromCard(button.closest(".card"));
 
-        navigator.clipboard.writeText(commandText)
+        copyTextToClipboard(commandText)
             .then(() => {
                 const originalText = button.html();
                 button.removeClass("btn-secondary").addClass("btn-success");
@@ -716,6 +758,61 @@ function setupClipboardButtons() {
             })
             .catch(err => console.error("Failed to copy command:", err));
     });
+}
+
+function setupHelpDialog() {
+    const dialog = document.getElementById("helpDialog");
+    const openButton = document.getElementById("helpButton");
+    const closeButton = document.getElementById("closeHelpButton");
+
+    if (!dialog || !openButton || !closeButton) {
+        return;
+    }
+
+    const openDialog = () => {
+        if (typeof dialog.showModal === "function") {
+            dialog.showModal();
+        } else {
+            dialog.setAttribute("open", "");
+        }
+
+        openButton.setAttribute("aria-expanded", "true");
+    };
+
+    const closeDialog = () => {
+        if (typeof dialog.close === "function") {
+            dialog.close();
+        } else {
+            dialog.removeAttribute("open");
+        }
+
+        openButton.setAttribute("aria-expanded", "false");
+    };
+
+    openButton.addEventListener("click", openDialog);
+    closeButton.addEventListener("click", closeDialog);
+    dialog.addEventListener("close", () => {
+        openButton.setAttribute("aria-expanded", "false");
+    });
+    dialog.addEventListener("click", event => {
+        if (event.target !== dialog) {
+            return;
+        }
+
+        const bounds = dialog.getBoundingClientRect();
+        const clickedOutside = event.clientX < bounds.left
+            || event.clientX > bounds.right
+            || event.clientY < bounds.top
+            || event.clientY > bounds.bottom;
+
+        if (clickedOutside) {
+            closeDialog();
+        }
+    });
+}
+
+function updateFooterYear() {
+    $("#currentYear").text(new Date().getFullYear());
 }
 
 function resetInputValuesToDefault() {
