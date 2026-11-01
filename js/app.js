@@ -55,7 +55,7 @@ const commands = [
     { // fuff dir discovery
         id: "fuff_dir_discovery",
         description: "Directory discovery using ffuf",
-        command: "ffuf -w {{wordlist}} -u http://{{target_domain}}/FUZZ",
+        command: "ffuf -w {{wordlist}} -u http://{{target_host}}/FUZZ",
         tool: "ffuf",
         category: "Web Discovery",
         tags: ["brute force", "web"],
@@ -65,7 +65,7 @@ const commands = [
     {
         id: "gobuster_dir_discovery",
         description: "Directory discovery using gobuster",
-        command: "gobuster dir -u http://{{target_domain}} -w {{wordlist}}",
+        command: "gobuster dir -u http://{{target_host}} -w {{wordlist}}",
         tool: "gobuster",
         category: "Web Discovery",
         tags: ["brute force", "web"],
@@ -75,7 +75,7 @@ const commands = [
     {
         id: "fuff_subdomain_discovery",
         description: "Subdomain discovery using ffuf",
-        command: "ffuf -w {{wordlist}} -u http://{{target_domain}} -H \"Host: FUZZ.{{target_domain}}\" -fs 4242",
+        command: "ffuf -w {{wordlist}} -u http://{{target_host}} -H \"Host: FUZZ.{{target_host}}\" -fs 4242",
         tool: "ffuf",
         category: "DNS And VHOST Discovery",
         tags: ["subdomain discovery", "dns"],
@@ -106,7 +106,7 @@ const commands = [
     {
         id: "gobuster_subdomain_discovery",
         description: "Subdomain discovery using gobuster",
-        command: "gobuster dns -d {{target_domain}} -w {{wordlist}}",
+        command: "gobuster dns -d {{target_host}} -w {{wordlist}}",
         tool: "gobuster",
         category: "DNS And VHOST Discovery",
         tags: ["subdomain discovery", "dns"],
@@ -116,7 +116,7 @@ const commands = [
     {
         id: "get_param_fuzz",
         description: "GET param fuzzing, filtering for invalid response size",
-        command: "ffuf -w {{wordlist}} -u http://{{target_domain}}/index.php?FUZZ=42 -fs 4242",
+        command: "ffuf -w {{wordlist}} -u http://{{target_host}}/index.php?FUZZ=42 -fs 4242",
         tool: "ffuf",
         category: "Parameter fuzzing",
         tags: ["get param", "response filtering"],
@@ -125,7 +125,7 @@ const commands = [
     {
         id: "get_param_values",
         description: "GET parameter fuzzing if the param is known (fuzzing values) and filtering 401",
-        command: "ffuf -w {{wordlist}} -u http://{{target_domain}}/script.php?valid_name=FUZZ -fc 401",
+        command: "ffuf -w {{wordlist}} -u http://{{target_host}}/script.php?valid_name=FUZZ -fc 401",
         tool: "ffuf",
         category: "Parameter fuzzing",
         tags: ["get param", "filter 401"],
@@ -134,7 +134,7 @@ const commands = [
     {
         id: "post_param_fuzz",
         description: "POST parameter fuzzing with filtering for status code 401",
-        command: "ffuf -w {{wordlist}} -X POST -d \"username={{target_user}}\\&password=FUZZ\" -u http://{{target_domain}}/login.php -fc 401",
+        command: "ffuf -w {{wordlist}} -X POST -d \"username={{target_user}}\\&password=FUZZ\" -u http://{{target_host}}/login.php -fc 401",
         tool: "ffuf",
         category: ["Authentication", "Parameter fuzzing"],
         tags: ["post param", "filter 401"],
@@ -143,7 +143,7 @@ const commands = [
     {
         id: "post_json_fuzz",
         description: "Fuzz POST JSON data. Match all responses not containing text 'error'.",
-        command: `ffuf -w {{wordlist}} -u http://{{target_domain}}/ -X POST -H "Content-Type: application/json" -d '{"value": "FUZZ", "value2": "anothervalue"}' -fr "error"`,
+        command: `ffuf -w {{wordlist}} -u http://{{target_host}}/ -X POST -H "Content-Type: application/json" -d '{"value": "FUZZ", "value2": "anothervalue"}' -fr "error"`,
         tool: "ffuf",
         category: "JSON fuzzing",
         tags: ["post","json", "response filtering"],
@@ -273,7 +273,7 @@ const inputvariables = [
     { id: "local_ip", label: "Local IP", default: "10.10.10.69" },
     { id: "local_port", label: "Local Port", default: "9001" },
     { id: "target_path", label: "Target Path", default: "/" },
-    { id: "target_domain", label: "Target Domain", default: "example.com" },
+    { id: "target_host", label: "Target Host", default: "example.com" },
     { id: "target_user", label: "Target User", default: "admin" },
     { id: "target_pass", label: "Target Password", default: "password" },
     { id: "search_term", label: "Search Term", default: "SEARCH_TERM" },
