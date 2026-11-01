@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Backdoor Bag</title>
+    <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Link to jQuery -->
@@ -18,7 +19,7 @@
 <body>
     <div class="container d-flex flex-column py-4 app-shell">
         <header class="text-center mb-4">
-            <h1><i class="fas fa-toolbox me-2"></i>Backdoor Bag</h1>
+            <h1><img src="assets/logo.svg" alt="" class="brand-logo me-2" width="28" height="28">Backdoor Bag</h1>
             <div class="header-actions">
                 <p class="text-muted">A command generator for red team tools</p>
                 <button class="help-button" id="helpButton" type="button" aria-label="Open quick help" aria-controls="helpDialog" aria-haspopup="dialog">?</button>
@@ -54,7 +55,17 @@
         <div class="container row g-3 p-4 rounded bg-dark command-library">
             <!-- Tabs -->
             <div class="container pb-2">
+                <div class="command-search">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <label class="visually-hidden" for="commandSearch">Search commands</label>
+                    <input id="commandSearch" type="search" placeholder="Search commands, tools, tags..." autocomplete="off" spellcheck="false">
+                    <span id="commandSearchStatus" role="status" aria-live="polite"></span>
+                </div>
                 <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist"></ul>
+                <section id="commandSearchResults" hidden>
+                    <h3>Search results</h3>
+                    <div id="commandSearchCommands"></div>
+                </section>
                 <div class="tab-content" id="pills-tabContent"></div>
             </div>
         </div>

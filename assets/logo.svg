@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Dark Terminal Pack</title>
+  <desc id="desc">A strong backpack silhouette in pitch black with a glowing amber terminal prompt.</desc>
+  <path d="M84 70V53c0-22 18-39 39-39h10c21 0 39 17 39 39v17" fill="none" stroke="#ECEBE4" stroke-width="13" stroke-linecap="round"/>
+  <rect x="42" y="56" width="172" height="185" rx="38" fill="#080808" stroke="#ECEBE4" stroke-width="14"/>
+  <path d="M28 111h14v76H28c-8 0-14-6-14-14v-48c0-8 6-14 14-14ZM228 111h-14v76h14c8 0 14-6 14-14v-48c0-8-6-14-14-14Z" fill="#0D0D0D" stroke="#ECEBE4" stroke-width="10"/>
+  <path d="m78 124 39 31-39 31M132 186h49" fill="none" stroke="#E7B84B" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

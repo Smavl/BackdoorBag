@@ -11,6 +11,44 @@ const wordlists = {
     "big-list-of-naughty-strings.txt": "/usr/share/seclists/Fuzzing/big-list-of-naughty-strings.txt",
 }
 
+const toolInformation = {
+    ffuf: {
+        references: [
+            { label: "ffuf docs", url: "https://github.com/ffuf/ffuf" }
+        ]
+    },
+    gobuster: {
+        references: [
+            { label: "Gobuster docs", url: "https://github.com/OJ/gobuster" }
+        ]
+    },
+    hydra: {
+        references: [
+            { label: "Hydra docs", url: "https://github.com/vanhauser-thc/thc-hydra" }
+        ]
+    },
+    findstr: {
+        platform: "Windows",
+        references: [
+            { label: "findstr docs", url: "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/findstr" }
+        ]
+    },
+    find: {
+        platform: "Linux",
+        references: [
+            { label: "find manual", url: "https://man7.org/linux/man-pages/man1/find.1.html" }
+        ]
+    },
+    "cp/chmod": {
+        platform: "Linux",
+        requiresRoot: true,
+        references: [
+            { label: "cp manual", url: "https://man7.org/linux/man-pages/man1/cp.1.html" },
+            { label: "chmod manual", url: "https://man7.org/linux/man-pages/man1/chmod.1.html" }
+        ]
+    }
+};
+
 // Commands array
 const commands = [
     // **** WEB DISCOVERY COMMANDS ****
@@ -142,6 +180,16 @@ const commands = [
         tags: ["ftp"],
         default_wordlist: wordlists["rockyou"]
     },
+    // *** Windows Filesystem Enumeration ***
+    {
+        id: "findstr_recursive_search",
+        description: "Recursively search file contents with findstr",
+        command: "findstr /spin \"{{search_term}}\" *.*",
+        tool: "findstr",
+        category: "Filesystem Enumeration",
+        tags: ["findstr", "search", "files"],
+        default_wordlist: undefined
+    },
     // *** Linux PrivEsc  ***
     // Filesystem Enumeration
     {
@@ -150,7 +198,7 @@ const commands = [
         command: "find / -perm -4000 2>/dev/null",
         tool: "find",
         category: "Filesystem Enumeration",
-        tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration"],
+        tags: ["find", "Privilege Escalation", "Filesystem Enumeration"],
         default_wordlist: undefined
     },
     {
@@ -159,7 +207,7 @@ const commands = [
         command: "find /home -user root 2>/dev/null",
         tool: "find",
         category: "Filesystem Enumeration",
-        tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
+        tags: ["find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
         default_wordlist: undefined
     },
     {
@@ -168,7 +216,7 @@ const commands = [
         command: "for d in `find /var /etc /home /root /tmp /usr /opt /boot /sys -type d -user $(whoami) 2>/dev/null`; do find $d ! -user `whoami` -exec ls -l {} \\; 2>/dev/null; done",
         tool: "find",
         category: "Filesystem Enumeration",
-        tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
+        tags: ["find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
         default_wordlist: undefined
     },
     {
@@ -177,7 +225,7 @@ const commands = [
         command: "find / -type f -user root ! -perm -o=r 2>/dev/null",
         tool: "find",
         category: "Filesystem Enumeration",
-        tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
+        tags: ["find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
         default_wordlist: undefined
     },
     {
@@ -186,7 +234,7 @@ const commands = [
         command: "find / '(' -type f -or -type d ')' '(' '(' -user $USER ')' -or '(' -perm -o=w ')' ')' ! -path \"/proc/*\" ! -path \"/sys/*\" ! -path \"$HOME/*\" 2>/dev/null",
         tool: "find",
         category: "Filesystem Enumeration",
-        tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
+        tags: ["find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
         default_wordlist: undefined
     },
     {
@@ -195,7 +243,7 @@ const commands = [
         command: "for g in `groups`; do find \( -type f -or -type d \) -group $g -perm -g=w 2>/dev/null | grep -v '/proc/' | grep -v $HOME; done",
         tool: "find",
         category: "Filesystem Enumeration",
-        tags: ["linux","find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
+        tags: ["find", "Privilege Escalation", "Filesystem Enumeration", "Permissions"],
         default_wordlist: undefined
     },
     // Filesystem operations
@@ -209,7 +257,7 @@ const commands = [
         ],
     tool: "cp/chmod",
     category: "Filesystem Operations",
-    tags: ["linux", "copy", "permissions","Privilege Escalation"],
+    tags: ["copy", "permissions","Privilege Escalation"],
     default_wordlist: undefined
 },
 ];
@@ -228,6 +276,7 @@ const inputvariables = [
     { id: "target_domain", label: "Target Domain", default: "example.com" },
     { id: "target_user", label: "Target User", default: "admin" },
     { id: "target_pass", label: "Target Password", default: "password" },
+    { id: "search_term", label: "Search Term", default: "SEARCH_TERM" },
     // { id: "wordlist", label: "Wordlist Path", default: wordlistPaths[0] } 
     { id: "wordlist", label: "Wordlist Path", default: null } 
 ];
@@ -263,6 +312,7 @@ $(document).ready(function () {
     setupInputChangeListener();
     setupInlineVariableEditing();
     setupClipboardButtons();
+    setupCommandSearch();
     setupHelpDialog();
     updateFooterYear();
     setupTabChangeListener(); // Set up tab persistence
@@ -347,7 +397,7 @@ function createInputField(id, label, defaultValue) {
                     <ul class="dropdown-menu">
                         ${dropdownItems}
                     </ul>
-                    <input type="text" class="form-control " id="${id}" placeholder="Enter wordlist path" value="${defaultValue}">
+                    <input type="text" class="form-control " id="${id}" placeholder="Uses each command's default" value="${defaultValue}">
                 </div>
             </div>
         `;
@@ -501,6 +551,150 @@ function createTabContent(tabId, category, isActive) {
     `;
 }
 
+function getCommandInformation(command) {
+    return {
+        ...(toolInformation[command.tool] || {}),
+        ...(command.metadata || {})
+    };
+}
+
+function getCommandMetadataItems(command) {
+    const information = getCommandInformation(command);
+    const metadata = [];
+
+    if (information.platform) {
+        metadata.push({ label: information.platform, type: "platform" });
+    }
+    if (information.requiresRoot) {
+        metadata.push({ label: "Root required", type: "warning" });
+    }
+
+    return metadata;
+}
+
+function renderCommandMetadata(command) {
+    return getCommandMetadataItems(command).map(item =>
+        `<span class="meta-badge meta-badge--${item.type}">${escapeHtml(item.label)}</span>`
+    ).join("");
+}
+
+function renderCommandReferences(command) {
+    const references = getCommandInformation(command).references || [];
+
+    return references.map(reference => `
+        <a class="command-reference" href="${escapeHtml(reference.url)}" target="_blank" rel="noopener noreferrer">
+            ${escapeHtml(reference.label)}<i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+        </a>
+    `).join("");
+}
+
+function renderCommandCard(command, values) {
+    const commandValues = getCommandValues(command, values);
+    const renderedCommand = renderCommandTemplate(command.command, commandValues);
+    const tagElements = command.tags.map(tag =>
+        `<span class="tag">${escapeHtml(tag)}</span>`
+    ).join("");
+    const metadataElements = renderCommandMetadata(command);
+    const referenceElements = renderCommandReferences(command);
+
+    return `
+        <div class="card mb-3" data-command-id="${escapeHtml(command.id)}">
+            <div class="card-body">
+                <h5 class="card-title">${escapeHtml(command.description)}</h5>
+                <span class="tool-badge">${escapeHtml(command.tool)}</span>
+                <div class="command-tags">
+                    ${tagElements}
+                </div>
+                <div class="command-details">
+                    <div class="command-metadata" aria-label="Command metadata">${metadataElements}</div>
+                    <div class="command-references">${referenceElements}</div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center command-row">
+                    <pre class="command-text flex-grow-1 mb-0">${renderedCommand}</pre>
+                    <button class="btn btn-secondary btn-sm copy-btn ms-3" type="button">
+                        <i class="fas fa-copy me-1"></i>Copy
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getCommandSearchText(command, values) {
+    const information = getCommandInformation(command);
+    const commandValues = getCommandValues(command, values);
+    const metadata = getCommandMetadataItems(command).map(item => item.label);
+    const references = (information.references || []).map(reference => reference.label);
+
+    return [
+        command.description,
+        command.tool,
+        ...[].concat(command.category),
+        ...command.tags,
+        commandToString(command.command),
+        replacePlaceholders(command.command, commandValues),
+        ...metadata,
+        ...references
+    ].join(" ").toLowerCase();
+}
+
+function searchCommands(query, values) {
+    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+
+    return commands.filter(command => {
+        const searchText = getCommandSearchText(command, values);
+        return terms.every(term => searchText.includes(term));
+    });
+}
+
+function updateCommandSearch(values = getInputValues()) {
+    const searchInput = $("#commandSearch");
+    if (!searchInput.length) {
+        return;
+    }
+
+    const query = searchInput.val().trim();
+    const isSearching = query.length > 0;
+    const searchResults = $("#commandSearchResults");
+
+    $("#pills-tab, #pills-tabContent").prop("hidden", isSearching);
+    searchResults.prop("hidden", !isSearching);
+
+    if (!isSearching) {
+        $("#commandSearchStatus").text("");
+        $("#commandSearchCommands").empty();
+        return;
+    }
+
+    const matches = searchCommands(query, values);
+    const resultLabel = `${matches.length} ${matches.length === 1 ? "result" : "results"}`;
+    $("#commandSearchStatus").text(resultLabel);
+
+    if (!matches.length) {
+        $("#commandSearchCommands").html(`
+            <div class="command-search-empty">No commands match “${escapeHtml(query)}”.</div>
+        `);
+        return;
+    }
+
+    $("#commandSearchCommands").html(
+        matches.map(command => renderCommandCard(command, values)).join("")
+    );
+}
+
+function setupCommandSearch() {
+    const searchInput = $("#commandSearch");
+
+    searchInput.on("input", () => updateCommandSearch(getInputValues()));
+    searchInput.on("keydown", event => {
+        if (event.key === "Escape" && searchInput.val()) {
+            event.preventDefault();
+            searchInput.val("");
+            updateCommandSearch(getInputValues());
+        }
+    });
+}
+
 // Update commands dynamically based on input values
 function updateCommands() {
     const values = getInputValues();
@@ -508,37 +702,12 @@ function updateCommands() {
 
     uniqueCategories.forEach(category => {
         const categoryCommands = commands.filter(command => command.category.includes(category));
-        const updatedCommands = categoryCommands.map(command => {
-            const commandValues = getCommandValues(command, values);
-            const renderedCommand = renderCommandTemplate(command.command, commandValues);
-            
-            // Create tags with the new styling
-            const tagElements = command.tags.map(tag => 
-                `<span class="tag">${escapeHtml(tag)}</span>`
-            ).join("");
-
-            return `
-                <div class="card mb-3" data-command-id="${escapeHtml(command.id)}">
-                    <div class="card-body">
-                        <h5 class="card-title">${escapeHtml(command.description)}</h5>
-                        <span class="tool-badge">${escapeHtml(command.tool)}</span>
-                        <div class="mb-3">
-                            ${tagElements}
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <pre class="command-text flex-grow-1 mb-0">${renderedCommand}</pre>
-                            <button class="btn btn-secondary btn-sm copy-btn ms-3" type="button">
-                                <i class="fas fa-copy me-1"></i>Copy
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-
+        const updatedCommands = categoryCommands.map(command => renderCommandCard(command, values));
         const tabId = formatCategoryToId(category);
         $(`#${tabId}-commands`).html(updatedCommands.join(""));
     });
+
+    updateCommandSearch(values);
 }
 
 // Get input values from the form
@@ -677,7 +846,7 @@ function beginInlineVariableEdit(element) {
 }
 
 function setupInlineVariableEditing() {
-    const commandContainer = $("#pills-tabContent");
+    const commandContainer = $(".command-library");
 
     commandContainer.on("click", ".editable-variable", function () {
         beginInlineVariableEdit(this);
@@ -740,23 +909,45 @@ function copyTextToClipboard(text) {
     return fallbackCopyTextToClipboard(text);
 }
 
+function showCopyFeedback(button, succeeded) {
+    const defaultHtml = button.data("default-html") || button.html();
+    const previousTimeout = button.data("feedback-timeout");
+
+    if (previousTimeout) {
+        clearTimeout(previousTimeout);
+    }
+
+    button.data("default-html", defaultHtml);
+    button.removeClass("btn-secondary btn-success btn-danger");
+
+    if (succeeded) {
+        button.addClass("btn-success");
+        button.html('<i class="fas fa-check me-1"></i>Copied!');
+    } else {
+        button.addClass("btn-danger");
+        button.html('<i class="fas fa-circle-exclamation me-1"></i>Copy failed');
+    }
+
+    const feedbackTimeout = setTimeout(() => {
+        button.removeClass("btn-success btn-danger").addClass("btn-secondary");
+        button.html(defaultHtml);
+        button.removeData("feedback-timeout default-html");
+    }, succeeded ? 1000 : 1800);
+
+    button.data("feedback-timeout", feedbackTimeout);
+}
+
 function setupClipboardButtons() {
-    $("#pills-tabContent").on("click", ".copy-btn", function () {
+    $(".command-library").on("click", ".copy-btn", function () {
         const button = $(this);
         const commandText = getCommandTextFromCard(button.closest(".card"));
 
         copyTextToClipboard(commandText)
-            .then(() => {
-                const originalText = button.html();
-                button.removeClass("btn-secondary").addClass("btn-success");
-                button.html('<i class="fas fa-check me-1"></i>Copied!');
-                
-                setTimeout(() => {
-                    button.removeClass("btn-success").addClass("btn-secondary");
-                    button.html(originalText);
-                }, 1000);
-            })
-            .catch(err => console.error("Failed to copy command:", err));
+            .then(() => showCopyFeedback(button, true))
+            .catch(error => {
+                showCopyFeedback(button, false);
+                console.error("Failed to copy command:", error);
+            });
     });
 }
 
