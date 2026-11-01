@@ -130,6 +130,42 @@ body {
     font-size: 0.9rem;
 }
 
+.editable-variable {
+    display: inline-block;
+    max-width: 100%;
+    color: #79c0ff;
+    background-color: rgba(56, 139, 253, 0.14);
+    border-bottom: 1px dashed #58a6ff;
+    border-radius: 3px;
+    padding: 0 0.15rem;
+    cursor: text;
+    overflow-wrap: anywhere;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.editable-variable:hover,
+.editable-variable:focus {
+    background-color: rgba(56, 139, 253, 0.28);
+    box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+    outline: none;
+}
+
+.inline-variable-input {
+    display: inline-block;
+    max-width: 100%;
+    min-width: 4ch;
+    margin: -0.2rem 0;
+    padding: 0.1rem 0.25rem;
+    font: inherit;
+    line-height: inherit;
+    color: #e6edf3;
+    background-color: #161b22;
+    border: 1px solid #58a6ff;
+    border-radius: 3px;
+    box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+    outline: none;
+}
+
 /* Dropdown styling */
 .dropdown-menu {
     background-color: #161b22;

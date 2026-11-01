@@ -261,6 +261,8 @@ $(document).ready(function () {
     applyDefaultValues();
     applyLocalValues();
     setupInputChangeListener();
+    setupInlineVariableEditing();
+    setupClipboardButtons();
     setupTabChangeListener(); // Set up tab persistence
     loadActiveTab(); // Load the last active tab
 
@@ -396,6 +398,55 @@ function commandToString(command) {
     return command ?? "";
 }
 
+function escapeHtml(value) {
+    const htmlEntities = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+    };
+
+    return String(value).replace(/[&<>"']/g, character => htmlEntities[character]);
+}
+
+function getCommandValues(command, values) {
+    return {
+        ...values,
+        wordlist: values.wordlist || command.default_wordlist || ""
+    };
+}
+
+function renderCommandTemplate(command, values) {
+    const template = commandToString(command);
+    const variablePattern = /{{([a-zA-Z0-9_]+)}}/g;
+    let renderedCommand = "";
+    let previousMatchEnd = 0;
+
+    template.replace(variablePattern, (placeholder, variableId, matchIndex) => {
+        renderedCommand += escapeHtml(template.slice(previousMatchEnd, matchIndex));
+
+        const variable = inputvariables.find(item => item.id === variableId);
+        const hasValue = Object.prototype.hasOwnProperty.call(values, variableId);
+        const value = hasValue ? values[variableId] ?? "" : placeholder;
+
+        if (variable) {
+            const escapedVariableId = escapeHtml(variableId);
+            const escapedValue = escapeHtml(value);
+            const escapedLabel = escapeHtml(variable.label);
+
+            renderedCommand += `<span class="editable-variable" data-variable-id="${escapedVariableId}" tabindex="0" role="button" title="Click to edit ${escapedLabel}" aria-label="Edit ${escapedLabel}">${escapedValue}</span>`;
+        } else {
+            renderedCommand += escapeHtml(value);
+        }
+
+        previousMatchEnd = matchIndex + placeholder.length;
+        return placeholder;
+    });
+
+    return renderedCommand + escapeHtml(template.slice(previousMatchEnd));
+}
+
 // Create a tab button
 function createTabButton(tabId, category, isActive) {
     // Define icons for different categories
@@ -429,9 +480,14 @@ function createTabButton(tabId, category, isActive) {
 // Create tab content
 function createTabContent(tabId, category, isActive) {
     const commandsForCategory = commands.filter(command => command.category.includes(category));
-    const commandList = commandsForCategory.map(command => `
-        <li class="list-group-item bg-dark text-light"><pre class="command-text mb-0">${commandToString(command.command)}</pre></li>
-    `).join("");
+    const values = getInputValues();
+    const commandList = commandsForCategory.map(command => {
+        const commandValues = getCommandValues(command, values);
+
+        return `
+            <li class="list-group-item bg-dark text-light"><pre class="command-text mb-0">${renderCommandTemplate(command.command, commandValues)}</pre></li>
+        `;
+    }).join("");
 
     return `
         <div class="tab-pane fade ${isActive ? "show active" : ""}" id="${tabId}" role="tabpanel" aria-labelledby="${tabId}-tab">
@@ -451,25 +507,25 @@ function updateCommands() {
     uniqueCategories.forEach(category => {
         const categoryCommands = commands.filter(command => command.category.includes(category));
         const updatedCommands = categoryCommands.map(command => {
-            const wordlist = values.wordlist || command.default_wordlist;
-            const replacedCommand = replacePlaceholders(command.command, { ...values, wordlist });
+            const commandValues = getCommandValues(command, values);
+            const renderedCommand = renderCommandTemplate(command.command, commandValues);
             
             // Create tags with the new styling
             const tagElements = command.tags.map(tag => 
-                `<span class="tag">${tag}</span>`
+                `<span class="tag">${escapeHtml(tag)}</span>`
             ).join("");
 
             return `
-                <div class="card mb-3">
+                <div class="card mb-3" data-command-id="${escapeHtml(command.id)}">
                     <div class="card-body">
-                        <h5 class="card-title">${command.description}</h5>
-                        <span class="tool-badge">${command.tool}</span>
+                        <h5 class="card-title">${escapeHtml(command.description)}</h5>
+                        <span class="tool-badge">${escapeHtml(command.tool)}</span>
                         <div class="mb-3">
                             ${tagElements}
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
-                            <pre class="command-text flex-grow-1 mb-0">${replacedCommand}</pre>
-                            <button class="btn btn-secondary btn-sm copy-btn ms-3" data-command="${btoa(replacedCommand)}">
+                            <pre class="command-text flex-grow-1 mb-0">${renderedCommand}</pre>
+                            <button class="btn btn-secondary btn-sm copy-btn ms-3" type="button">
                                 <i class="fas fa-copy me-1"></i>Copy
                             </button>
                         </div>
@@ -481,8 +537,6 @@ function updateCommands() {
         const tabId = formatCategoryToId(category);
         $(`#${tabId}-commands`).html(updatedCommands.join(""));
     });
-
-    setupClipboardButtons();
 }
 
 // Get input values from the form
@@ -501,9 +555,16 @@ function getInputValues() {
 
 // Replace placeholders in a command template with actual values
 function replacePlaceholders(command, values) {
-    return Object.entries(values).reduce((cmd, [key, value]) => 
-        cmd.replace(new RegExp(`{{${key}}}`, "g"), value || ""),
-    commandToString(command));
+    return commandToString(command).replace(
+        /{{([a-zA-Z0-9_]+)}}/g,
+        (placeholder, variableId) => {
+            if (!Object.prototype.hasOwnProperty.call(values, variableId)) {
+                return placeholder;
+            }
+
+            return values[variableId] ?? "";
+        }
+    );
 }
 
 // Set up input change listener to update commands dynamically and save to localStorage
@@ -532,10 +593,117 @@ function applyDefaultValues() {
     updateCommands();
 }
 
+function createEditableVariable(variableId, value) {
+    const variable = inputvariables.find(item => item.id === variableId);
+
+    return $("<span>", {
+        class: "editable-variable",
+        "data-variable-id": variableId,
+        tabindex: 0,
+        role: "button",
+        title: `Click to edit ${variable?.label || variableId}`,
+        "aria-label": `Edit ${variable?.label || variableId}`,
+        text: value
+    });
+}
+
+function syncInlineVariableElements(variableId) {
+    const values = getInputValues();
+
+    $(".editable-variable").each(function () {
+        const variable = $(this);
+        if (variable.data("variable-id") !== variableId) {
+            return;
+        }
+
+        const commandId = variable.closest(".card").data("command-id");
+        const command = commands.find(item => item.id === commandId);
+        const commandValues = command ? getCommandValues(command, values) : values;
+        variable.text(commandValues[variableId] ?? "");
+    });
+}
+
+function beginInlineVariableEdit(element) {
+    const variable = $(element);
+    const variableId = variable.data("variable-id");
+    const originalValue = variable.text();
+    const editor = $("<input>", {
+        type: "text",
+        class: "inline-variable-input",
+        value: originalValue,
+        "aria-label": `New value for ${variableId}`
+    });
+    let editFinished = false;
+
+    const resizeEditor = () => {
+        editor.attr("size", Math.max(4, editor.val().length));
+    };
+
+    const finishEdit = shouldSave => {
+        if (editFinished) {
+            return;
+        }
+
+        editFinished = true;
+        const newValue = shouldSave ? editor.val() : originalValue;
+        editor.replaceWith(createEditableVariable(variableId, newValue));
+
+        if (!shouldSave) {
+            return;
+        }
+
+        $(`#${variableId}`).val(newValue);
+        saveInputValuesToLocalStorage();
+        syncInlineVariableElements(variableId);
+    };
+
+    editor.on("input", resizeEditor);
+    editor.on("keydown", event => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            finishEdit(true);
+        } else if (event.key === "Escape") {
+            event.preventDefault();
+            finishEdit(false);
+        }
+    });
+    editor.on("blur", () => finishEdit(true));
+
+    variable.replaceWith(editor);
+    resizeEditor();
+    editor.trigger("focus").trigger("select");
+}
+
+function setupInlineVariableEditing() {
+    const commandContainer = $("#pills-tabContent");
+
+    commandContainer.on("click", ".editable-variable", function () {
+        beginInlineVariableEdit(this);
+    });
+
+    commandContainer.on("keydown", ".editable-variable", function (event) {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            beginInlineVariableEdit(this);
+        }
+    });
+}
+
+function getCommandTextFromCard(card) {
+    const commandText = card.find(".command-text").clone();
+    commandText.find(".inline-variable-input").each(function () {
+        $(this).replaceWith($(this).val());
+    });
+
+    return commandText.text();
+}
+
 function setupClipboardButtons() {
-    $(".copy-btn").on("click", function () {
+    $("#pills-tabContent").on("click", ".copy-btn", function () {
         const button = $(this);
-        navigator.clipboard.writeText(atob(button.data("command")))
+        const commandText = getCommandTextFromCard(button.closest(".card"));
+
+        navigator.clipboard.writeText(commandText)
             .then(() => {
                 const originalText = button.html();
                 button.removeClass("btn-secondary").addClass("btn-success");
